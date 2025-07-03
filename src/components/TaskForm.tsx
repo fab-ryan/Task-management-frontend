@@ -7,25 +7,29 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Task, TaskPriority, TaskStatus } from "@/types/task";
+import { GetAllTask, Task, TaskCategory, TaskPriority, TaskStatus } from "@/types/task";
+import { CreateTaskInput } from "@/services/task";
 
 interface TaskFormProps {
-  task?: Task | null;
-  onSubmit: (taskData: Omit<Task, "id" | "createdAt">) => void;
+  task?: GetAllTask | null;
+  onSubmit: (taskData: CreateTaskInput) => void;
   onClose: () => void;
+  newErrors?: Record<string, string>;
 }
 
-const TaskForm = ({ task, onSubmit, onClose }: TaskFormProps) => {
+const TaskForm = ({ task, onSubmit, onClose, newErrors }: TaskFormProps) => {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    priority: "medium" as TaskPriority,
-    status: "todo" as TaskStatus,
+    priority: "MEDIUM" as TaskPriority,
+    status: "PENDING" as TaskStatus,
     dueDate: "",
-    category: "",
+    category: "OTHER" as TaskCategory,
+    startDate: "",
+
   });
 
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string>>(newErrors || {});
 
   useEffect(() => {
     if (task) {
@@ -36,6 +40,7 @@ const TaskForm = ({ task, onSubmit, onClose }: TaskFormProps) => {
         status: task.status,
         dueDate: task.dueDate.split("T")[0], // Format for date input
         category: task.category,
+        startDate: task.startDate.split("T")[0],
       });
     } else {
       // Set default due date to today
@@ -65,7 +70,7 @@ const TaskForm = ({ task, onSubmit, onClose }: TaskFormProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -83,13 +88,13 @@ const TaskForm = ({ task, onSubmit, onClose }: TaskFormProps) => {
   ];
 
   const statusOptions = [
-    { value: "todo", label: "To Do" },
+    { value: "pending", label: "To Do" },
     { value: "in-progress", label: "In Progress" },
     { value: "completed", label: "Completed" },
   ];
 
   const categoryOptions = [
-    "Work", "Personal", "Health", "Education", "Shopping", "Finance", "Travel", "Home", "Other"
+    "Work", "Personal", "Shopping", "Other"
   ];
 
   return (
@@ -123,9 +128,8 @@ const TaskForm = ({ task, onSubmit, onClose }: TaskFormProps) => {
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                 placeholder="Enter task title..."
-                className={`border-slate-200 focus:border-purple-500 focus:ring-purple-500 ${
-                  errors.title ? "border-red-500" : ""
-                }`}
+                className={`border-slate-200 focus:border-purple-500 focus:ring-0 ${errors.title ? "border-red-500" : ""
+                  }`}
               />
               {errors.title && <p className="text-red-500 text-sm">{errors.title}</p>}
             </div>
@@ -141,7 +145,7 @@ const TaskForm = ({ task, onSubmit, onClose }: TaskFormProps) => {
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                 placeholder="Enter task description..."
                 rows={3}
-                className="border-slate-200 focus:border-purple-500 focus:ring-purple-500 resize-none"
+                className="border-slate-200 focus:border-purple-500 focus:ring-purple-500 resize-none focus:ring-0 focus:ring-0"
               />
             </div>
 
@@ -158,7 +162,7 @@ const TaskForm = ({ task, onSubmit, onClose }: TaskFormProps) => {
                     setFormData(prev => ({ ...prev, priority: value }))
                   }
                 >
-                  <SelectTrigger className="border-slate-200 focus:border-purple-500">
+                  <SelectTrigger className="border-slate-200 focus:border-purple-500 focus:ring-0" >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -172,25 +176,47 @@ const TaskForm = ({ task, onSubmit, onClose }: TaskFormProps) => {
               </div>
 
               {/* Status */}
+              {
+                task && (
+
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-slate-700">Status</Label>
+                    <Select
+                      value={formData.status}
+                      onValueChange={(value: TaskStatus) =>
+                        setFormData(prev => ({ ...prev, status: value }))
+                      }
+                    >
+                      <SelectTrigger className="border-slate-200 focus:border-purple-500 focus:ring-0">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {statusOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )
+              }
+              {/* Start Date */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-slate-700">Status</Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value: TaskStatus) =>
-                    setFormData(prev => ({ ...prev, status: value }))
-                  }
-                >
-                  <SelectTrigger className="border-slate-200 focus:border-purple-500">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {statusOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="startDate" className="text-sm font-medium text-slate-700 flex items-center">
+                  <Calendar className="w-4 h-4 mr-1" />
+                  Start Date
+                </Label>
+                <Input
+                  id="startDate"
+                  type="date"
+                  value={formData.startDate}
+                  onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                  className={`border-slate-200 focus:border-purple-500 focus:ring-purple-500 focus:ring-0 ${errors.startDate ? "border-red-500" : ""
+                    }`}
+                />
+                {errors.startDate && <p className="text-red-500 text-sm">{errors.startDate}</p>}
               </div>
 
               {/* Due Date */}
@@ -204,9 +230,8 @@ const TaskForm = ({ task, onSubmit, onClose }: TaskFormProps) => {
                   type="date"
                   value={formData.dueDate}
                   onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))}
-                  className={`border-slate-200 focus:border-purple-500 focus:ring-purple-500 ${
-                    errors.dueDate ? "border-red-500" : ""
-                  }`}
+                  className={`border-slate-200 focus:border-purple-500 focus:ring-purple-500 focus:ring-0 ${errors.dueDate ? "border-red-500" : ""
+                    }`}
                 />
                 {errors.dueDate && <p className="text-red-500 text-sm">{errors.dueDate}</p>}
               </div>
@@ -219,11 +244,10 @@ const TaskForm = ({ task, onSubmit, onClose }: TaskFormProps) => {
                 </Label>
                 <Select
                   value={formData.category}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
+                  onValueChange={(value: TaskCategory) => setFormData(prev => ({ ...prev, category: value }))}
                 >
-                  <SelectTrigger className={`border-slate-200 focus:border-purple-500 ${
-                    errors.category ? "border-red-500" : ""
-                  }`}>
+                  <SelectTrigger className={`border-slate-200 focus:border-purple-500 focus:ring-0 ${errors.category ? "border-red-500" : ""
+                    }`}>
                     <SelectValue placeholder="Select a category" />
                   </SelectTrigger>
                   <SelectContent>

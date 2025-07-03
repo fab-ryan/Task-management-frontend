@@ -19,18 +19,18 @@ const TaskCard = ({ task, onClick, onDelete, onStatusChange, compact = false }: 
   const [isHovered, setIsHovered] = useState(false);
 
   const priorityConfig = {
-    high: { color: "bg-red-100 text-red-700 border-red-200", dot: "bg-red-500" },
-    medium: { color: "bg-yellow-100 text-yellow-700 border-yellow-200", dot: "bg-yellow-500" },
-    low: { color: "bg-green-100 text-green-700 border-green-200", dot: "bg-green-500" },
+    HIGH: { color: "bg-red-100 text-red-700 border-red-200", dot: "bg-red-500" },
+    MEDIUM: { color: "bg-yellow-100 text-yellow-700 border-yellow-200", dot: "bg-yellow-500" },
+    LOW: { color: "bg-green-100 text-green-700 border-green-200", dot: "bg-green-500" },
   };
 
   const statusConfig = {
-    todo: { icon: Circle, color: "text-slate-400", bg: "bg-slate-50" },
-    "in-progress": { icon: Play, color: "text-blue-600", bg: "bg-blue-50" },
-    completed: { icon: CheckCircle2, color: "text-green-600", bg: "bg-green-50" },
+    PENDING: { icon: Circle, color: "text-slate-400", bg: "bg-slate-50" },
+    IN_PROGRESS: { icon: Play, color: "text-blue-600", bg: "bg-blue-50" },
+    COMPLETED: { icon: CheckCircle2, color: "text-green-600", bg: "bg-green-50" },
   };
 
-  const isOverdue = new Date(task.dueDate) < new Date() && task.status !== "completed";
+  const isOverdue = new Date(task.dueDate) < new Date() && task.status !== "COMPLETED";
   const dueDate = new Date(task.dueDate);
   const isToday = dueDate.toDateString() === new Date().toDateString();
   const isTomorrow = dueDate.toDateString() === new Date(Date.now() + 86400000).toDateString();
@@ -43,24 +43,24 @@ const TaskCard = ({ task, onClick, onDelete, onStatusChange, compact = false }: 
 
   const getNextStatus = (): TaskStatus => {
     switch (task.status) {
-      case "todo":
-        return "in-progress";
-      case "in-progress":
-        return "completed";
-      case "completed":
-        return "todo";
+      case "COMPLETED":
+        return "IN_PROGRESS";
+      case "IN_PROGRESS":
+        return "COMPLETED";
+      case "PENDING":
+        return "PENDING";
       default:
-        return "todo";
+        return "PENDING";
     }
   };
 
-  const StatusIcon = statusConfig[task.status].icon;
+  const StatusIcon = statusConfig[task?.status]?.icon;
 
   return (
     <Card
       className={cn(
         "border-0 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group",
-        task.status === "completed" && "opacity-75",
+        task.status === "COMPLETED" && "opacity-75",
         compact ? "p-3" : "p-0"
       )}
       onMouseEnter={() => setIsHovered(true)}
@@ -77,18 +77,18 @@ const TaskCard = ({ task, onClick, onDelete, onStatusChange, compact = false }: 
               }}
               className={cn(
                 "p-1 rounded-full transition-colors",
-                statusConfig[task.status].bg,
+                statusConfig[task?.status]?.bg,
                 "hover:scale-110"
               )}
             >
-              <StatusIcon className={cn("w-4 h-4", statusConfig[task.status].color)} />
+              <StatusIcon className={cn("w-4 h-4", statusConfig[task?.status]?.color)} />
             </button>
             <Badge
               variant="outline"
-              className={cn("text-xs", priorityConfig[task.priority].color)}
+              className={cn("text-xs", priorityConfig[task?.priority]?.color)}
             >
-              <div className={cn("w-2 h-2 rounded-full mr-1", priorityConfig[task.priority].dot)} />
-              {task.priority}
+              <div className={cn("w-2 h-2 rounded-full mr-1", priorityConfig[task?.priority]?.dot)} />
+              {task?.priority}
             </Badge>
           </div>
           {!compact && (
@@ -124,13 +124,13 @@ const TaskCard = ({ task, onClick, onDelete, onStatusChange, compact = false }: 
         <div className="space-y-2">
           <h3 className={cn(
             "font-semibold text-slate-800 group-hover:text-purple-700 transition-colors",
-            task.status === "completed" && "line-through text-slate-500",
+            task?.status === "COMPLETED" && "line-through text-slate-500",
             compact ? "text-sm" : "text-lg"
           )}>
-            {task.title}
+            {task?.title}
           </h3>
           {!compact && (
-            <p className="text-slate-600 text-sm line-clamp-2">{task.description}</p>
+            <p className="text-slate-600 text-sm line-clamp-2">{task?.description}</p>
           )}
         </div>
 
@@ -148,7 +148,7 @@ const TaskCard = ({ task, onClick, onDelete, onStatusChange, compact = false }: 
               </Badge>
             )}
           </div>
-          {isOverdue && task.status !== "completed" && (
+          {isOverdue && task?.status !== "COMPLETED" && (
             <Badge variant="destructive" className="text-xs">
               Overdue
             </Badge>

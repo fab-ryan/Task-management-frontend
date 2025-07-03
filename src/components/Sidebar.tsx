@@ -1,8 +1,9 @@
 
-import { BarChart3, CheckSquare, Calendar, Filter, TrendingUp } from "lucide-react";
+import { BarChart3, CheckSquare, Calendar, Filter, TrendingUp, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Task, TaskPriority, TaskStatus } from "@/types/task";
-
+import { Button } from "./ui/button";
+import { useAuth } from "@/lib/auth-context";
 interface SidebarProps {
   currentView: "dashboard" | "tasks";
   onViewChange: (view: "dashboard" | "tasks") => void;
@@ -12,6 +13,7 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ currentView, onViewChange, filterBy, onFilterChange, tasks }: SidebarProps) => {
+  const { logout } = useAuth();
   const navigation = [
     { name: "Dashboard", icon: BarChart3, key: "dashboard" as const },
     { name: "My Tasks", icon: CheckSquare, key: "tasks" as const },
@@ -19,15 +21,15 @@ const Sidebar = ({ currentView, onViewChange, filterBy, onFilterChange, tasks }:
 
   const filters = [
     { name: "All Tasks", key: "all" as const, count: tasks.length },
-    { name: "To Do", key: "todo" as const, count: tasks.filter(t => t.status === "todo").length },
-    { name: "In Progress", key: "in-progress" as const, count: tasks.filter(t => t.status === "in-progress").length },
-    { name: "Completed", key: "completed" as const, count: tasks.filter(t => t.status === "completed").length },
+    { name: "To Do", key: "PENDING" as const, count: tasks.filter(t => t.status === "PENDING").length },
+    { name: "In Progress", key: "IN_PROGRESS" as const, count: tasks.filter(t => t.status === "IN_PROGRESS").length },
+    { name: "Completed", key: "COMPLETED" as const, count: tasks.filter(t => t.status === "COMPLETED").length },
   ];
 
   const priorities = [
-    { name: "High Priority", key: "high" as const, count: tasks.filter(t => t.priority === "high").length, color: "text-red-600" },
-    { name: "Medium Priority", key: "medium" as const, count: tasks.filter(t => t.priority === "medium").length, color: "text-yellow-600" },
-    { name: "Low Priority", key: "low" as const, count: tasks.filter(t => t.priority === "low").length, color: "text-green-600" },
+    { name: "High Priority", key: "HIGH" as const, count: tasks.filter(t => t.priority === "HIGH").length, color: "text-red-600" },
+    { name: "Medium Priority", key: "MEDIUM" as const, count: tasks.filter(t => t.priority === "MEDIUM").length, color: "text-yellow-600" },
+    { name: "Low Priority", key: "LOW" as const, count: tasks.filter(t => t.priority === "LOW").length, color: "text-green-600" },
   ];
 
   return (
@@ -111,6 +113,12 @@ const Sidebar = ({ currentView, onViewChange, filterBy, onFilterChange, tasks }:
               </button>
             ))}
           </div>
+        </div>
+        <div className="flex items-center space-x-2 mt-[100px] w-full">
+          <Button variant="outline" size="icon" className="w-full" onClick={logout}>
+            <LogOut className="w-4 h-4" />
+            <span className="text-sm">Logout</span>
+          </Button>
         </div>
       </div>
     </div>

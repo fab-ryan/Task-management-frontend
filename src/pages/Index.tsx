@@ -6,83 +6,77 @@ import TaskDashboard from "@/components/TaskDashboard";
 import TaskList from "@/components/TaskList";
 import TaskForm from "@/components/TaskForm";
 import Sidebar from "@/components/Sidebar";
-import { Task, TaskStatus, TaskPriority } from "@/types/task";
+import { Task, TaskStatus, TaskPriority, GetAllTask } from "@/types/task";
 import { useToast } from "@/hooks/use-toast";
+import { useCreateTask, useGetAllTasks } from "@/services";
 
 const Index = () => {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<GetAllTask[]>([]);
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [selectedTask, setSelectedTask] = useState<GetAllTask | null>(null);
   const [currentView, setCurrentView] = useState<"dashboard" | "tasks">("dashboard");
   const [filterBy, setFilterBy] = useState<"all" | TaskPriority | TaskStatus>("all");
+  const [newErrors, setNewErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
-
+  const { data: tasksData, loading, error } = useGetAllTasks();
+  const { data: completedTasksData, loading: completedTasksLoading, error: completedTasksError } = useGetAllTasks({
+    status: "COMPLETED",
+  });
+  const { createTask, loading: createTaskLoading, error: createTaskError } = useCreateTask();
   // Load tasks from localStorage on component mount
   useEffect(() => {
     const savedTasks = localStorage.getItem("tasks");
-    if (savedTasks) {
+    if (savedTasks && tasksData?.getAllTasks.length === 0) {
       setTasks(JSON.parse(savedTasks));
     } else {
-      // Add some sample tasks for demonstration
-      const sampleTasks: Task[] = [
-        {
-          id: "1",
-          title: "Complete project proposal",
-          description: "Write and review the Q4 project proposal document",
-          priority: "high",
-          status: "in-progress",
-          dueDate: new Date(Date.now() + 86400000 * 3).toISOString(),
-          createdAt: new Date().toISOString(),
-          category: "Work"
-        },
-        {
-          id: "2",
-          title: "Team meeting preparation",
-          description: "Prepare slides and agenda for tomorrow's team meeting",
-          priority: "medium",
-          status: "todo",
-          dueDate: new Date(Date.now() + 86400000).toISOString(),
-          createdAt: new Date().toISOString(),
-          category: "Work"
-        },
-        {
-          id: "3",
-          title: "Exercise routine",
-          description: "30 minutes cardio and strength training",
-          priority: "low",
-          status: "completed",
-          dueDate: new Date().toISOString(),
-          createdAt: new Date(Date.now() - 86400000).toISOString(),
-          category: "Health"
-        }
-      ];
-      setTasks(sampleTasks);
-      localStorage.setItem("tasks", JSON.stringify(sampleTasks));
+      setTasks(tasksData?.getAllTasks || []);
+      console.log(tasksData?.getAllTasks);
+
+      localStorage.setItem("tasks", JSON.stringify(tasksData?.getAllTasks || []));
     }
-  }, []);
+  }, [tasksData]);
 
   // Save tasks to localStorage whenever tasks change
   useEffect(() => {
     localStorage.setItem("tasks", JSON.stringify(tasks));
   }, [tasks]);
 
-  const handleCreateTask = (taskData: Omit<Task, "id" | "createdAt">) => {
-    const newTask: Task = {
+  const handleCreateTask = (taskData: Omit<GetAllTask, "id" | "createdAt">) => {
+    const newTask: GetAllTask = {
       ...taskData,
       id: Date.now().toString(),
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
-    setTasks(prev => [newTask, ...prev]);
+    createTask({
+      variables: {
+        title: newTask.title,
+        description: newTask.description,
+        category: newTask.category.toUpperCase(),
+        priority: newTask.priority.toUpperCase(),
+        dueDate: newTask.dueDate,
+        startDate: newTask.startDate || new Date().toISOString(),
+      },
+      onCompleted: (data) => {
+        setTasks(prev => [data.createTask, ...prev]);
+      },
+      onError: (error) => {
+        console.log(error.graphQLErrors[0].extensions?.newErrors);
+        setNewErrors(error.graphQLErrors[0].extensions?.newErrors as Record<string, string>);
+      },
+    });
+    // setTasks(prev => [newTask, ...prev]);
     setIsTaskFormOpen(false);
     toast({
       title: "Task created!",
       description: "Your new task has been added successfully.",
+      variant: "success",
     });
   };
 
   const handleUpdateTask = (taskData: Omit<Task, "id" | "createdAt">) => {
     if (!selectedTask) return;
-    
+
     setTasks(prev =>
       prev.map(task =>
         task.id === selectedTask.id
@@ -113,9 +107,9 @@ const Index = () => {
         task.id === taskId ? { ...task, status } : task
       )
     );
-    
+
     const task = tasks.find(t => t.id === taskId);
-    if (task && status === "completed") {
+    if (task && status === "COMPLETED") {
       toast({
         title: "Task completed! 🎉",
         description: `Great job completing "${task.title}"!`,
@@ -123,17 +117,23 @@ const Index = () => {
     }
   };
 
-  const openEditTask = (task: Task) => {
+  const openEditTask = (task: GetAllTask) => {
     setSelectedTask(task);
     setIsTaskFormOpen(true);
   };
 
   const filteredTasks = tasks.filter(task => {
     if (filterBy === "all") return true;
-    if (filterBy === "todo" || filterBy === "in-progress" || filterBy === "completed") {
+    if (filterBy === "LOW" || filterBy === "MEDIUM" || filterBy === "HIGH") {
+      return task.priority === filterBy;
+    }
+    if (filterBy === "PENDING" || filterBy === "IN_PROGRESS" || filterBy === "COMPLETED") {
       return task.status === filterBy;
     }
-    return task.priority === filterBy;
+    if (filterBy === "WORK" || filterBy === "PERSONAL" || filterBy === "SHOPPING" || filterBy === "OTHER") {
+      return task.category === filterBy;
+    }
+    return false;
   });
 
   return (
@@ -158,8 +158,8 @@ const Index = () => {
                   {currentView === "dashboard" ? "Dashboard" : "My Tasks"}
                 </h1>
                 <p className="text-slate-600">
-                  {currentView === "dashboard" 
-                    ? "Overview of your productivity" 
+                  {currentView === "dashboard"
+                    ? "Overview of your productivity"
                     : `${filteredTasks.length} tasks`}
                 </p>
               </div>
@@ -176,10 +176,11 @@ const Index = () => {
           {/* Content */}
           <main className="p-6">
             {currentView === "dashboard" ? (
-              <TaskDashboard 
-                tasks={tasks} 
+              <TaskDashboard
+                tasks={tasks}
                 onTaskClick={openEditTask}
                 onStatusChange={handleStatusChange}
+                completedTasks={completedTasksData?.getAllTasks || []}
               />
             ) : (
               <TaskList
@@ -202,6 +203,7 @@ const Index = () => {
             setIsTaskFormOpen(false);
             setSelectedTask(null);
           }}
+          newErrors={newErrors}
         />
       )}
     </div>

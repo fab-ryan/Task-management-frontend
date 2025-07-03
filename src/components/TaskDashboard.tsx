@@ -4,44 +4,44 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Task, TaskStatus } from "@/types/task";
 import TaskCard from "./TaskCard";
+import { useGetDashboard } from "@/services";
 
 interface TaskDashboardProps {
   tasks: Task[];
   onTaskClick: (task: Task) => void;
   onStatusChange: (taskId: string, status: TaskStatus) => void;
+  completedTasks: Task[];
 }
 
-const TaskDashboard = ({ tasks, onTaskClick, onStatusChange }: TaskDashboardProps) => {
+const TaskDashboard = ({ tasks, onTaskClick, onStatusChange, completedTasks }: TaskDashboardProps) => {
   const totalTasks = tasks.length;
-  const completedTasks = tasks.filter(t => t.status === "completed").length;
-  const inProgressTasks = tasks.filter(t => t.status === "in-progress").length;
-  const todoTasks = tasks.filter(t => t.status === "todo").length;
-  const highPriorityTasks = tasks.filter(t => t.priority === "high").length;
+  const completedTasksCount = completedTasks.length;
+  const inProgressTasks = tasks.filter(t => t.status === "IN_PROGRESS").length;
+  const todoTasks = tasks.filter(t => t.status === "PENDING").length;
+  const { data, loading: dashboardLoading, error: dashboardError } = useGetDashboard();
 
-  const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+
+  const completionRate = totalTasks > 0 ? (completedTasksCount / totalTasks) * 100 : 0;
 
   // Get upcoming tasks (due in next 7 days)
   const upcomingTasks = tasks
-    .filter(t => t.status !== "completed")
-    .filter(t => {
-      const dueDate = new Date(t.dueDate);
-      const now = new Date();
-      const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-      return dueDate >= now && dueDate <= nextWeek;
-    })
+    .filter(t => t.status !== "COMPLETED")
+    // .filter(t => {
+    //   const dueDate = new Date(t.dueDate);
+    //   const now = new Date();
+    //   const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    //   return dueDate >= now && dueDate <= nextWeek;
+    // })
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
     .slice(0, 5);
 
   // Get recent completed tasks
-  const recentCompleted = tasks
-    .filter(t => t.status === "completed")
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 3);
+  const recentCompleted = completedTasks.slice(0, 3);
 
   const stats = [
     {
       title: "Total Tasks",
-      value: totalTasks,
+      value: data?.getDashboard?.totalTasks,
       icon: Target,
       color: "from-blue-500 to-cyan-500",
       bgColor: "bg-blue-50",
@@ -49,7 +49,7 @@ const TaskDashboard = ({ tasks, onTaskClick, onStatusChange }: TaskDashboardProp
     },
     {
       title: "Completed",
-      value: completedTasks,
+      value: data?.getDashboard?.completedTasks,
       icon: CheckCircle2,
       color: "from-green-500 to-emerald-500",
       bgColor: "bg-green-50",
@@ -57,7 +57,7 @@ const TaskDashboard = ({ tasks, onTaskClick, onStatusChange }: TaskDashboardProp
     },
     {
       title: "In Progress",
-      value: inProgressTasks,
+      value: data?.getDashboard?.inProgressTasks,
       icon: Clock,
       color: "from-yellow-500 to-orange-500",
       bgColor: "bg-yellow-50",
@@ -65,7 +65,7 @@ const TaskDashboard = ({ tasks, onTaskClick, onStatusChange }: TaskDashboardProp
     },
     {
       title: "High Priority",
-      value: highPriorityTasks,
+      value: data?.getDashboard?.tasksByPriority.find(p => p.priority.toLowerCase() === "high" || p.priority.toLowerCase() === "medium" || p.priority.toLowerCase() === "low")?._count || 0,
       icon: Star,
       color: "from-red-500 to-pink-500",
       bgColor: "bg-red-50",
@@ -78,7 +78,7 @@ const TaskDashboard = ({ tasks, onTaskClick, onStatusChange }: TaskDashboardProp
       {/* Welcome Section */}
       <div className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl p-6 text-white">
         <h2 className="text-2xl font-bold mb-2">Welcome back! 👋</h2>
-        <p className="text-purple-100">You have {todoTasks + inProgressTasks} tasks pending. Let's get productive!</p>
+        <p className="text-purple-100">You have {data?.getDashboard?.inProgressTasks + data?.getDashboard?.pendingTasks} tasks pending. Let's get productive!</p>
       </div>
 
       {/* Stats Grid */}
@@ -114,9 +114,9 @@ const TaskDashboard = ({ tasks, onTaskClick, onStatusChange }: TaskDashboardProp
             <div>
               <div className="flex justify-between text-sm text-slate-600 mb-2">
                 <span>Completion Rate</span>
-                <span>{completionRate.toFixed(0)}%</span>
+                <span>{data?.getDashboard?.overallProgress?.toFixed(0)}%</span>
               </div>
-              <Progress value={completionRate} className="h-3" />
+              <Progress value={data?.getDashboard?.overallProgress} className="h-3" />
             </div>
             <div className="grid grid-cols-3 gap-4 text-center">
               <div className="p-3 bg-red-50 rounded-lg">
@@ -128,7 +128,7 @@ const TaskDashboard = ({ tasks, onTaskClick, onStatusChange }: TaskDashboardProp
                 <div className="text-xs text-yellow-600">In Progress</div>
               </div>
               <div className="p-3 bg-green-50 rounded-lg">
-                <div className="text-lg font-bold text-green-700">{completedTasks}</div>
+                <div className="text-lg font-bold text-green-700">{completedTasksCount}</div>
                 <div className="text-xs text-green-600">Completed</div>
               </div>
             </div>
